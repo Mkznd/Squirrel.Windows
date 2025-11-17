@@ -9,6 +9,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+
   <ItemGroup>
     <ProjectReference Include="..\..\vendor\nuget\src\Core\Core.csproj" />
   </ItemGroup>
