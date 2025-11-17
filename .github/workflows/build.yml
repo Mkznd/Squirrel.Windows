@@ -30,29 +30,46 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      - name: Install Visual Studio components
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install ATL via Chocolatey
         shell: pwsh
         run: |
-          Write-Host "Installing ATL components..."
-          $vsInstallerPath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+          Write-Host "Installing Visual C++ ATL for x86 and x64..."
 
-          # Install both ATL and ATL for latest build tools (with support for v142 build tools)
-          & $vsInstallerPath modify `
-            --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" `
-            --add Microsoft.VisualStudio.Component.VC.ATL `
-            --add Microsoft.VisualStudio.Component.VC.ATL.ARM64 `
-            --add Microsoft.VisualStudio.Component.VC.ATLMFC `
-            --quiet --norestart --wait
+          # Install via VS Build Tools using chocolatey
+          choco install visualstudio2022-workload-vctools --package-parameters "--add Microsoft.VisualStudio.Component.VC.ATL --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended" -y
 
-          Write-Host "Waiting for VS installation to complete..."
-          Start-Sleep -Seconds 30
+          Write-Host "Waiting for installation to complete..."
+          Start-Sleep -Seconds 60
 
-          # Verify ATL installation
-          $atlPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\*\atlmfc\include\atlbase.h"
-          if (Test-Path $atlPath) {
-            Write-Host "ATL headers found at: $(Resolve-Path $atlPath)"
-          } else {
-            Write-Host "Warning: ATL headers not found!"
+          # List what VS components are installed
+          Write-Host "`nChecking installed VS components..."
+          & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -all
+
+          # Try to find ATL headers
+          Write-Host "`nSearching for ATL headers..."
+          $atlPaths = @(
+            "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\*\atlmfc\include\atlbase.h",
+            "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\*\atlmfc\include\atlbase.h",
+            "C:\Program Files\Microsoft Visual Studio\2022\*\VC\Tools\MSVC\*\atlmfc\include\atlbase.h"
+          )
+
+          $found = $false
+          foreach ($path in $atlPaths) {
+            if (Test-Path $path) {
+              $resolved = Resolve-Path $path
+              Write-Host "✓ ATL headers found at: $resolved"
+              $found = $true
+              break
+            }
+          }
+
+          if (-not $found) {
+            Write-Host "✗ Warning: ATL headers not found in expected locations!"
+            Write-Host "Searching entire VC directory..."
+            Get-ChildItem -Path "C:\Program Files*" -Filter "atlbase.h" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Found: $($_.FullName)" }
           }
 
       - name: Build Squirrel
