@@ -27,6 +27,15 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Install Visual Studio components
+        shell: pwsh
+        run: |
+          $vsInstallerPath = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+          & $vsInstallerPath modify --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart
+
       - name: Build Squirrel
         shell: cmd
         run: ./src/build_official.cmd
